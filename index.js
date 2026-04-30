@@ -11,6 +11,17 @@ let cachedChampions = null;
 let lastFetchTime = null;
 
 
+function formatChampionName(champName) {
+    let cleanName = champName
+            .replaceAll(".", " ")
+            .split(" ")
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .join("")
+        
+            return cleanName
+}
+
+
 async function getChampions() {
     
     const cacheExpired = lastFetchTime &&
@@ -32,18 +43,8 @@ async function getChampions() {
 app.get('/champion/:name', async (req, res) => {
     try{
         
-        const cleanName = req.params.name
-            .replaceAll(" ", "")
-            .toLowerCase()
-
-
-        const firstLetter = cleanName
-            .charAt(0)
-            .toUpperCase()
+        const championName = formatChampionName(req.params.name)
         
-        const restOfName = cleanName.slice(1)
-        
-        const championName = firstLetter + restOfName
 
         console.log(championName)
 
@@ -90,7 +91,6 @@ app.get('/champions', async (req, res) => {
         const championList = Object.entries(champions)
             .map(champ => {
                 const name = champ[0]
-                const data = champ[1]
                 const splashArt = `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${name}_0.jpg`
             
             
@@ -117,26 +117,18 @@ app.get('/champions', async (req, res) => {
 
 app.get('/champion/:name/skins', async (req,res) => {
     try{
-        const skinName = req.params.name
-            .replaceAll(" ", "")
-            .toLocaleLowerCase()
+        const champName = formatChampionName(req.params.name)
 
-        const skinFirstLetter = skinName
-            .charAt(0)
-            .toUpperCase()
-        
-        const restOfName = skinName.slice(1)
-        const fullSkinName = skinFirstLetter + restOfName
 
-        const url = `https://ddragon.leagueoflegends.com/cdn/14.1.1/data/en_US/champion/${fullSkinName}.json`
+        const url = `https://ddragon.leagueoflegends.com/cdn/14.1.1/data/en_US/champion/${champName}.json`
 
         const response = await axios.get(url)
 
-        const skinArray = response.data.data[fullSkinName].skins
+        const skinArray = response.data.data[champName].skins
             .map(skins => {
                 const skinNumber = skins.num
                 const skinName = skins.name
-                const skinURL = `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${fullSkinName}_${skinNumber}.jpg`
+                const skinURL = `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${champName}_${skinNumber}.jpg`
             
             return {
                 skinNumber,
