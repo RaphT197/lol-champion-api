@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LoL Champion Browser</title>
+    <style>
+        /* we'll add styles here */
+    </style>
+</head>
+<body>
+
+    <h1>League of Legends Champion Browser</h1>
+    
+    <input type="text" id="searchBar" placeholder="Search champions...">
+    
+    <div id="championGrid">
+        <!-- champion cards will be injected here by JavaScript -->
+    </div>
+
+    <script>
+        async function loadChampions() {
+            try {
+                const response = await fetch('/champions');
+                const champions = await response.json();
+
+                const grid = document.getElementById('championGrid');
+
+                champions.forEach(champion => {
+                    const card = document.createElement('div');
+                    card.className = 'champion-card';
+                    card.innerHTML = `
+                        
+                        <img src="${champion.sprite}" width="75"}" alt="${champion.name} Sprite">
+                        <h3>${champion.name}</h3>
+                    `;
+                    grid.appendChild(card);
+                })
+                console.log(champions); // Log the champions to the console
+            } catch (error) {
+                console.error('Error fetching champions:', error);
+            }
+        }
+        loadChampions();
+    </script>
+
+</body>
+</html>

@@ -1,11 +1,17 @@
+const dotenv = require('dotenv'); // imports dotenv
+dotenv.config(); // loads environment variables from .env file
+
 const express = require('express'); // imports express
 const axios = require('axios'); //imports axios
 
+const envport = process.env.PORT || 3000; // sets the port to the value of the PORT environment variable, or defaults to 3000 if not set
 const app = express();
+app.use(express.static('public')) // serves static files from public folder
 
-const port = process.env.PORT;
-const CACHE_DURATION = 60 * 60 * 1000; // 1 hour in ms
-const CHAMPION_URL = `https://ddragon.leagueoflegends.com/cdn/14.1.1/data/en_US/champion.json`
+const CACHE_DURATION = process.env.CACHE_DURATION || 60 * 60 * 1000; // 1 hour in ms
+const CHAMPION_URL = process.env.CHAMPION_URL || `https://ddragon.leagueoflegends.com/cdn/14.1.1/data/en_US/champion.json`
+const API_KEY = process.env.API_KEY
+console.log(`API Key: ${API_KEY}`)
 
 let cachedChampions = null;
 let lastFetchTime = null;
@@ -21,7 +27,23 @@ function formatChampionName(champName) {
             return cleanName
 }
 
+async function getSummonerData (summonerName, tagLine) {
 
+    const url = `https://americas.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${summonerName}/${tagLine}`
+
+    const response = await axios.get(url, {
+        headers: {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept-Charset": "application/x-www-form-urlencoded; charset=UTF-8",
+            "Origin": "https://developer.riotgames.com",
+            "X-Riot-Token": process.env.API_KEY
+        }
+    })
+
+    console.log(response.data)
+    return response.data
+}
 async function getChampions() {
     
     const cacheExpired = lastFetchTime &&
@@ -38,6 +60,45 @@ async function getChampions() {
     }
 
 }
+
+async function getMatchIds(puuid) {
+    const url = `https://americas.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?start=0&count=20`
+
+    const response = await axios.get(url, {
+        headers: {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept-Charset": "application/x-www-form-urlencoded; charset=UTF-8",
+            "Origin": "https://developer.riotgames.com",
+            "X-Riot-Token": API_KEY
+        }
+    })
+    return response.data
+}
+app.get(`/summoner/:name/:tagLine`, async (req, res) => {
+    try {
+        const summonerName = req.params.name
+        const tagLine = req.params.tagLine
+
+        const summonerData = await getSummonerData(summonerName, tagLine)
+        const matchIds = await getMatchIds(summonerData.puuid)
+
+
+        res.json({
+            summonerData,
+            matchIds
+        })
+
+    } catch (error) {
+        console.error(error.message);
+
+        if(error.response && error.response.status === 404){
+            res.status(404).json({error: `Summoner not found`})
+        } else {
+            res.status(500).json({error: `Something went wrong.`})
+        }
+    }
+}) 
 
 
 app.get('/champion/:name', async (req, res) => {
@@ -91,12 +152,12 @@ app.get('/champions', async (req, res) => {
         const championList = Object.entries(champions)
             .map(champ => {
                 const name = champ[0]
-                const splashArt = `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${name}_0.jpg`
-            
+                const sprite = `https://ddragon.leagueoflegends.com/cdn/16.9.1/img/champion/${name}.png`
+                //`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${name}_0.jpg`
             
             return {
                 name,
-                splashArt
+                sprite
             }
     })
 
@@ -118,7 +179,6 @@ app.get('/champions', async (req, res) => {
 app.get('/champion/:name/skins', async (req,res) => {
     try{
         const champName = formatChampionName(req.params.name)
-
 
         const url = `https://ddragon.leagueoflegends.com/cdn/14.1.1/data/en_US/champion/${champName}.json`
 
@@ -149,6 +209,7 @@ app.get('/champion/:name/skins', async (req,res) => {
     }
 }) 
 
-app.listen(port, () => {
-    console.log(`Server is running on port ${port}`)
+
+app.listen(envport, () => {
+    console.log(`Server is running on port ${envport}`)
 })
