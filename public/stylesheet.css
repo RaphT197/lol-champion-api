@@ -1,0 +1,57 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: #0a0a0f;
+    color: #c8aa6e;
+    font-family: Arial, sans-serif;
+    padding: 20px;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #c8aa6e;
+}
+
+#searchBar {
+    display: block;
+    margin: 0 auto 20px;
+    padding: 10px;
+    width: 300px;
+    background: #1a1a2e;
+    border: 1px solid #c8aa6e;
+    color: #c8aa6e;
+    border-radius: 4px;
+}
+
+#championGrid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+}
+
+.champion-card {
+    background: #1a1a2e;
+    border: 1px solid #c8aa6e;
+    border-radius: 8px;
+    padding: 10px;
+    width: 100px;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.champion-card:hover {
+    transform: scale(1.1);
+    border-color: #f0e6d3;
+}
+
+.champion-card h3 {
+    font-size: 11px;
+    margin-top: 5px;
+}

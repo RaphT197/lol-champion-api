@@ -5,14 +5,78 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LoL Champion Browser</title>
     <style>
-        /* we'll add styles here */
+        * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: #0a0a0f;
+    color: #c8aa6e;
+    font-family: Arial, sans-serif;
+    padding: 20px;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #c8aa6e;
+}
+
+#searchBar {
+    display: block;
+    margin: 0 auto 20px;
+    padding: 10px;
+    width: 300px;
+    background: #1a1a2e;
+    border: 1px solid #c8aa6e;
+    color: #c8aa6e;
+    border-radius: 4px;
+}
+
+#championGrid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+}
+
+.champion-card {
+    background: #1a1a2e;
+    border: 1px solid #c8aa6e;
+    border-radius: 8px;
+    padding: 10px;
+    width: 100px;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.champion-card:hover {
+    transform: scale(1.1);
+    border-color: #f0e6d3;
+}
+
+.champion-card h3 {
+    font-size: 11px;
+    margin-top: 5px;
+}
     </style>
 </head>
 <body>
 
     <h1>League of Legends Champion Browser</h1>
-    
+
+    <!-- Champion Search -->
     <input type="text" id="searchBar" placeholder="Search champions...">
+
+    <!-- Summoner Search -->
+    <div id="summonerSearch">
+        <input type="text" id="summonerName" placeholder="Summoner name...">
+        <input type="text" id="tagLine" placeholder="TAG (e.g. NA1)">
+        <button id="searchButton">Search</button>
+    </div>
     
     <div id="championGrid">
         <!-- champion cards will be injected here by JavaScript -->
@@ -30,18 +94,58 @@
                     const card = document.createElement('div');
                     card.className = 'champion-card';
                     card.innerHTML = `
-                        
-                        <img src="${champion.sprite}" width="75"}" alt="${champion.name} Sprite">
+                        <img id="championSprite" src="${champion.sprite}" width="75" height="75" alt="${champion.id} Sprite">
                         <h3>${champion.name}</h3>
                     `;
+
+                    card.addEventListener('click', () => {
+                        window.location.href = `/champion.html?name=${champion.id}`;
+                    });
                     grid.appendChild(card);
-                })
+                });
+
                 console.log(champions); // Log the champions to the console
             } catch (error) {
                 console.error('Error fetching champions:', error);
             }
         }
+
+        function filterItems() {
+            const searchTerm = document.getElementById('searchBar').value.toLowerCase();
+            const championCards = document.querySelectorAll('.champion-card');
+
+            championCards.forEach(card => {
+
+                const championName = card.querySelector('h3').textContent.toLowerCase();
+
+                if (championName.includes(searchTerm)) {
+                    card.style.display = '';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+
+        }
+
+        async function summonerInfo() {
+            document.getElementById('searchButton').addEventListener('click', () => {
+                const summonerName = document.getElementById('summonerName').value
+                const tagLine = document.getElementById('tagLine').value
+
+                if(!summonerName || !tagLine) {
+                    alert('Please enter both summoner name and tag!')
+                    return
+                }
+
+                window.location.href = `/summoner.html?name=${summonerName}&tag=${tagLine}`
+            })
+        }
+
+        document.getElementById('searchBar').addEventListener('input', filterItems);
+
         loadChampions();
+        summonerInfo();
     </script>
 
 </body>

@@ -2,10 +2,18 @@ const dotenv = require('dotenv'); // imports dotenv
 dotenv.config(); // loads environment variables from .env file
 
 const express = require('express'); // imports express
+const rateLimit = require('express-rate-limit'); // imports express-rate-limit
 const axios = require('axios'); //imports axios
 
 const envport = process.env.PORT || 3000; // sets the port to the value of the PORT environment variable, or defaults to 3000 if not set
+
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100 // limit each IP to 100 requests per windowMs
+});
+
 const app = express();
+app.use(limiter); // applies rate limiting to all routes
 app.use(express.static('public')) // serves static files from public folder
 
 const CACHE_DURATION = process.env.CACHE_DURATION || 60 * 60 * 1000; // 1 hour in ms
@@ -22,8 +30,7 @@ function formatChampionName(champName) {
             .replaceAll(".", " ")
             .split(" ")
             .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-            .join("")
-        
+            .join(' ')
             return cleanName
 }
 
@@ -75,6 +82,8 @@ async function getMatchIds(puuid) {
     })
     return response.data
 }
+
+
 app.get(`/summoner/:name/:tagLine`, async (req, res) => {
     try {
         const summonerName = req.params.name
@@ -82,11 +91,14 @@ app.get(`/summoner/:name/:tagLine`, async (req, res) => {
 
         const summonerData = await getSummonerData(summonerName, tagLine)
         const matchIds = await getMatchIds(summonerData.puuid)
+        const summonerGameName = summonerData.gameName + '#' + summonerData.tagLine
+        console.log(summonerGameName)
 
 
         res.json({
             summonerData,
-            matchIds
+            matchIds,
+            summonerGameName
         })
 
     } catch (error) {
@@ -103,32 +115,44 @@ app.get(`/summoner/:name/:tagLine`, async (req, res) => {
 
 app.get('/champion/:name', async (req, res) => {
     try{
-        
-        const championName = formatChampionName(req.params.name)
-        
+        const championName = req.params.name
+        const detailUrl = `https://ddragon.leagueoflegends.com/cdn/${process.env.VERSION}/data/en_US/champion/${championName}.json`
 
-        console.log(championName)
+
 
         const champions = await getChampions(); // calls function
         const champion = champions[championName] // finds specific champion
+
+        console.log('Raw param:', req.params.name)
+        console.log('After format:', championName)
+        console.log('Found champion:', !!champion)
 
         if(!champion) {
         return res.status(404).json({error: `Champion not found`})
         }  
 
-        const {name, title, id, blurb} = champion
-        const {hp, mp, attackdamage, armor} = champion.stats
+        const detailResponse = await axios.get(detailUrl)
+        const detailData = detailResponse.data
+
+        const {name, title, id} = champion
+        const {lore} = detailData.data[championName]
+        const {hp, mp, movespeed, armor, spellblock, attackrange, attackdamage, attackspeed} = champion.stats
         const splashArt = `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${championName}_0.jpg`
+
 
         res.json({
             name,
             id,
-            blurb,
+            lore,
             title,
-            hp,
-            mp,
-            armor,
-            attackdamage,
+            hp, 
+            mp, 
+            movespeed, 
+            armor, 
+            spellblock, 
+            attackrange, 
+            attackdamage, 
+            attackspeed,
             splashArt
         })
 
@@ -151,11 +175,14 @@ app.get('/champions', async (req, res) => {
 
         const championList = Object.entries(champions)
             .map(champ => {
-                const name = champ[0]
-                const sprite = `https://ddragon.leagueoflegends.com/cdn/16.9.1/img/champion/${name}.png`
+                const id = champ[0]
+                const data = champ[1]
+                const name = data.name
+                const sprite = `https://ddragon.leagueoflegends.com/cdn/${process.env.VERSION}/img/champion/${id}.png`
                 //`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${name}_0.jpg`
             
             return {
+                id,
                 name,
                 sprite
             }
@@ -178,13 +205,14 @@ app.get('/champions', async (req, res) => {
 
 app.get('/champion/:name/skins', async (req,res) => {
     try{
-        const champName = formatChampionName(req.params.name)
+        const champName = req.params.name
 
-        const url = `https://ddragon.leagueoflegends.com/cdn/14.1.1/data/en_US/champion/${champName}.json`
+        const url = `https://ddragon.leagueoflegends.com/cdn/${process.env.VERSION}/data/en_US/champion/${champName}.json`
 
         const response = await axios.get(url)
 
         const skinArray = response.data.data[champName].skins
+            .filter(skin => !skin.parentSkin)
             .map(skins => {
                 const skinNumber = skins.num
                 const skinName = skins.name
