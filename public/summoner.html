@@ -93,8 +93,10 @@
 
     <div id="summonerHeader" style="display:none;">
         <h1 id="summonerName"></h1>
+        <p id="profileIcon"></p>
         <p id="summonerLevel"></p>
         <p id="summonerPuuid"></p>
+        
     </div>
 
     <div id="matchSection" style="display:none;">
@@ -112,6 +114,14 @@
                 const response = await fetch(`/summoner/${summonerName}/${tagLine}`);
                 const data = await response.json();
 
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to fetch summoner.');
+                }
+
+                if (!data.summonerData) {
+                    throw new Error('Failed to fetch summoner data.');
+                }
+
                 const championsResponse = await fetch('/champions');
                 const championsData = await championsResponse.json();
                 const championIconMap = {};
@@ -123,8 +133,10 @@
 
                 const summonerResponse = await fetch(`/lol/summoner/v4/summoners/by-puuid/${puuid}`);
                 const summonerData = await summonerResponse.json();
+                const summonerIcon = summonerData.profileIconId;
+                const summonerIconImg = `https://ddragon.leagueoflegends.com/cdn/${VERSION}/img/profileicon/${summonerIcon}.png`;
 
-                if (!response.ok) {
+                if (!summonerResponse.ok) {
                     throw new Error(data.error || 'Failed to fetch summoner.');
                 }
 
@@ -132,6 +144,7 @@
 
                 document.getElementById('summonerName').textContent = data.summonerGameName;
                 document.getElementById('summonerLevel').textContent = `Level: ${summonerData.summonerLevel}`;
+                document.getElementById('profileIcon').innerHTML = `<img src="${summonerIconImg}" width ="120" height="120" alt="Profile Icon" />`;
                 document.getElementById('summonerPuuid').textContent = `PUUID: ${data.summonerData.puuid}`; 
                 document.getElementById('summonerHeader').style.display = 'block';
 
@@ -169,6 +182,7 @@
                 errEl.style.display = 'block';
             }
         }
+
 
         async function matchData(id) {
             const response = await fetch(`/lol/match/v5/matches/${id}`);
