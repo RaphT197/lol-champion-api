@@ -1,32 +1,181 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="stylesheet" href="stylesheet.css">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Summoner</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #0a0a0f;
+            color: #c8aa6e;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        #backButton {
+            color: #c8aa6e;
+            text-decoration: none;
+            display: inline-block;
+            margin-bottom: 20px;
+            border: 1px solid #c8aa6e;
+            padding: 8px 16px;
+            border-radius: 4px;
+        }
+
+        #backButton:hover {
+            background: #c8aa6e;
+            color: #0a0a0f;
+        }
+
+        #summonerHeader {
+            margin-bottom: 40px;
+        }
+
+        #summonerHeader h1 {
+            font-size: 2.5rem;
+            margin-bottom: 8px;
+        }
+
+        #summonerHeader p {
+            color: #a0a0a0;
+            font-size: 13px;
+            word-break: break-all;
+        }
+
+        #matchSection h2 {
+            margin-bottom: 20px;
+            border-bottom: 1px solid #c8aa6e;
+            padding-bottom: 10px;
+        }
+
+        #matchList {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-width: 700px;
+        }
+
+        .match-card {
+            background: #1a1a2e;
+            border: 1px solid #c8aa6e;
+            border-radius: 6px;
+            padding: 12px 16px;
+            font-size: 13px;
+            font-family: monospace;
+            color: #c8aa6e;
+        }
+
+        #errorMsg {
+            color: #e06c75;
+            font-size: 1.2rem;
+            margin-top: 40px;
+        }
+
+        #loading {
+            color: #a0a0a0;
+            margin-top: 40px;
+        }
     </style>
 </head>
 <body>
+
+    <a href="/" id="backButton">← Back to Champions</a>
+
+    <div id="loading">Loading summoner data...</div>
+    <div id="errorMsg" style="display:none;"></div>
+
+    <div id="summonerHeader" style="display:none;">
+        <h1 id="summonerName"></h1>
+        <p id="summonerLevel"></p>
+        <p id="summonerPuuid"></p>
+    </div>
+
+    <div id="matchSection" style="display:none;">
+        <h2>Recent Matches</h2>
+        <div id="matchList"></div>
+    </div>
+
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const summonerName = urlParams.get('name');
         const tagLine = urlParams.get('tag');
 
-        console.log(summonerName, tagLine);
+        async function getSummonerInfo() {
+            try {
+                const response = await fetch(`/summoner/${summonerName}/${tagLine}`);
+                const data = await response.json();
 
-async function getSummonerInfo() {
-    try {
-        const summonerResponse = await fetch(`/summoner/${summonerName}/${tagLine}`)
-        const summonerData = await summonerResponse.json()
-        console.log(summonerData)
-    } catch(error) {
-        console.error('Error fetching summoner:', error)
-    }
-}
+                const championsResponse = await fetch('/champions');
+                const championsData = await championsResponse.json();
+                const championIconMap = {};
+                championsData.forEach(champ => {
+                    championIconMap[champ.id] = champ.sprite;
+                });
 
-    getSummonerInfo();
+                const puuid = data.summonerData.puuid;
 
+                const summonerResponse = await fetch(`/lol/summoner/v4/summoners/by-puuid/${puuid}`);
+                const summonerData = await summonerResponse.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to fetch summoner.');
+                }
+
+                document.getElementById('loading').style.display = 'none';
+
+                document.getElementById('summonerName').textContent = data.summonerGameName;
+                document.getElementById('summonerLevel').textContent = `Level: ${summonerData.summonerLevel}`;
+                document.getElementById('summonerPuuid').textContent = `PUUID: ${data.summonerData.puuid}`; 
+                document.getElementById('summonerHeader').style.display = 'block';
+
+                const matchList = document.getElementById('matchList');
+                for (const [index, id] of data.matchIds.entries()) {
+                    const matchInfo = await Promise.all([matchData(id)]);
+                    const champName = matchInfo[0].info.participants.find(p => p.puuid === puuid).championName;
+                    const matchDuration = Math.floor(matchInfo[0].info.gameDuration / 60);
+                    const matchDurationSecond = matchInfo[0].info.gameDuration % 60;
+
+                    const card = document.createElement('div');
+                    card.className = 'match-card';
+
+                    const img = document.createElement('img');
+                    img.src = championIconMap[champName] || '';
+                    img.width = 32;
+                    img.height = 32;
+                    img.style.verticalAlign = 'middle';
+                    img.style.marginRight = '10px';
+                    card.appendChild(img);
+
+                    const info = document.createElement('span');
+                    info.textContent = `Match ${index + 1} - ${matchInfo[0].info.gameMode} - ${new Date(matchInfo[0].info.gameStartTimestamp).toLocaleString()} - ${champName} - ${matchDuration}m ${matchDurationSecond}s`;
+                    card.appendChild(info);
+
+                    matchList.appendChild(card);
+
+                }
+                document.getElementById('matchSection').style.display = 'block';
+
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                const errEl = document.getElementById('errorMsg');
+                errEl.textContent = error.message;
+                errEl.style.display = 'block';
+            }
+        }
+
+        async function matchData(id) {
+            const response = await fetch(`/lol/match/v5/matches/${id}`);
+            return await response.json();
+        }
+
+        getSummonerInfo();
     </script>
 </body>
 </html>

@@ -237,6 +237,58 @@ app.get('/champion/:name/skins', async (req,res) => {
     }
 }) 
 
+app.get('/lol/summoner/v4/summoners/by-puuid/:puuid', async (req, res) => {
+    try {
+        const puuid = req.params.puuid;
+
+        const url = `https://na1.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${puuid}`;
+
+        const response = await axios.get(url, {
+            headers: {
+                'X-Riot-Token': process.env.API_KEY
+            }
+        });
+
+        res.json(response.data);
+    } catch (error) {
+        console.error(error.message);
+
+        if(error.response && error.response.status === 404){
+            res.status(404).json({error: `Summoner not found`})
+        } else {
+            res.status(500).json({error: `Something went wrong.`})
+        }
+    }
+});
+
+app.get('/lol/match/v5/matches/:matchId', async (req, res) => {
+    try {
+        const matchId = req.params.matchId;
+
+        const url = `https://americas.api.riotgames.com/lol/match/v5/matches/${matchId}`;
+
+        const response = await axios.get(url, {
+            headers: {
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Accept-Charset": "application/x-www-form-urlencoded; charset=UTF-8",
+                "Origin": "https://developer.riotgames.com",
+                "X-Riot-Token": API_KEY
+            }
+        });
+
+        res.json(response.data);
+    } catch (error) {
+        console.error(error.message);
+
+        if(error.response && error.response.status === 404){
+            res.status(404).json({error: `Match not found`})
+        } else {
+            res.status(500).json({error: `Something went wrong.`})
+        }
+    }
+})
+
 
 app.listen(envport, () => {
     console.log(`Server is running on port ${envport}`)
