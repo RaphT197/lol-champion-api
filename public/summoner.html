@@ -242,21 +242,24 @@
 </div>
 
     <script>
-    const QUEUE_NAMES = {                                                                                        
-      420: 'Ranked Solo/Duo',                               
-      440: 'Ranked Flex',                                                                                      
-      400: 'Normal Draft',                                  
-      430: 'Normal Blind',
-      450: 'ARAM',                                                                                             
-      900: 'URF',
-      0: 'Custom'
-    };  
+
         const urlParams = new URLSearchParams(window.location.search);
         const summonerName = urlParams.get('name');
         const tagLine = urlParams.get('tag');
 
         async function getSummonerInfo() {
             try {
+
+                const QUEUE_NAMES = {                                                                                        
+                    420: 'Ranked Solo/Duo',                               
+                    440: 'Ranked Flex',                                                                                      
+                    400: 'Normal Draft',                                  
+                    430: 'Normal Blind',
+                    450: 'ARAM',                                                                                             
+                    900: 'URF',
+                    0: 'Custom'
+                };  
+
                 const response = await fetch(`/summoner/${summonerName}/${tagLine}`);
                 const data = await response.json();
 
