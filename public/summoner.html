@@ -302,6 +302,7 @@
 
                 const matchList = document.getElementById('matchList');
                 validMatches.forEach((matchInfo, index) => {
+                    const queueName = QUEUE_NAMES[matchInfo.info.queueId] || matchInfo.info.gameMode;
                     const participant = matchInfo.info.participants.find(p => p.puuid === puuid);
                     const champName = participant.championName;
                     const matchDuration = Math.floor(matchInfo.info.gameDuration / 60);
@@ -331,7 +332,7 @@
 
                     const info = document.createElement('div');
                     const date = new Date(matchInfo.info.gameStartTimestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-                    info.innerHTML = `<div style="font-weight:bold;font-size:14px;">${champName}</div><div style="color:#a0a0a0;font-size:11px;margin-top:2px;">${matchInfo.info.gameMode} &middot; ${matchDuration}m ${matchDurationSecond}s &middot; ${date}</div>`;
+                    info.innerHTML = `<div style="font-weight:bold;font-size:14px;">${champName}</div><div style="color:#a0a0a0;font-size:11px;margin-top:2px;">${queueName} &middot; ${matchDuration}m ${matchDurationSecond}s &middot; ${date}</div>`;
 
                     const resultBadge = document.createElement('span');
                     resultBadge.textContent = won ? 'WIN' : 'LOSS';
