@@ -43,6 +43,41 @@
             margin-bottom: 8px;
         }
 
+        #winRate {
+            width: 150px;
+            aspect-ratio: 1;
+            border-radius: 50%;
+            background: conic-gradient(#3bef6e calc(var(--p) * 1%), #f14141 0);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            margin: 12px 0;
+        }
+
+        /* Donut hole — a dark circle layered on top of the gradient */
+        #winRate::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 68%;
+            height: 68%;
+            border-radius: 50%;
+            background: #0a0a0f;
+        }
+
+        #winRateText {
+            position: relative; /* sits above the ::before pseudo-element */
+            z-index: 1;
+            text-align: center;
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: #c8aa6e;
+            line-height: 1.4;
+        }
+
         #summonerHeader p {
             color: #a0a0a0;
             font-size: 13px;
@@ -70,7 +105,76 @@
             font-size: 13px;
             font-family: monospace;
             color: #c8aa6e;
+            cursor: pointer;
+            user-select: none;
         }
+
+        .match-card:hover {
+            background: #22223a;
+        }
+
+        .match-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .match-card-header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .match-chevron {
+            font-size: 10px;
+            transition: transform 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .match-card.expanded .match-chevron {
+            transform: rotate(180deg);
+        }
+
+        .match-details {
+            margin-top: 0;
+            padding-top: 0;
+            border-top: none;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease, padding-top 0.3s ease, margin-top 0.3s ease;
+        }
+
+        .match-card.expanded .match-details {
+            max-height: 200px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #3a3a5a;
+        }
+
+        .match-stat {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .match-stat-label {
+            color: #a0a0a0;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .match-stat-value {
+            color: #c8aa6e;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .match-result-win { color: #5dbb63; }
+        .match-result-loss { color: #e06c75; }
 
         #errorMsg {
             color: #e06c75;
@@ -96,7 +200,9 @@
         <p id="profileIcon"></p>
         <p id="summonerLevel"></p>
         <p id="summonerPuuid"></p>
-        
+        <div id="winRate">
+            <div id="winRateText">Win Rate</div>
+        </div>
     </div>
 
     <div id="matchSection" style="display:none;">
@@ -134,7 +240,7 @@
                 const summonerResponse = await fetch(`/lol/summoner/v4/summoners/by-puuid/${puuid}`);
                 const summonerData = await summonerResponse.json();
                 const summonerIcon = summonerData.profileIconId;
-                const summonerIconImg = `https://ddragon.leagueoflegends.com/cdn/${VERSION}/img/profileicon/${summonerIcon}.png`;
+                const summonerIconImg = `https://ddragon.leagueoflegends.com/cdn/16.9.1/img/profileicon/${summonerIcon}.png`;
 
                 if (!summonerResponse.ok) {
                     throw new Error(data.error || 'Failed to fetch summoner.');
@@ -147,32 +253,110 @@
                 document.getElementById('profileIcon').innerHTML = `<img src="${summonerIconImg}" width ="120" height="120" alt="Profile Icon" />`;
                 document.getElementById('summonerPuuid').textContent = `PUUID: ${data.summonerData.puuid}`; 
                 document.getElementById('summonerHeader').style.display = 'block';
+                document.getElementById('winRate').style.display = 'block';
+
+
+                const allMatchInfo = await Promise.all(data.matchIds.map(id => matchData(id)));
+
+                // Some fetches may fail (rate limit) — filter to only ones with valid data
+                const validMatches = allMatchInfo.filter(m => m.info && m.info.participants);
+
+                // Calculate once, outside the loop
+                const wins = validMatches.filter(m => m.info.participants.find(p => p.puuid === puuid)?.win).length;
+                const winRate = ((wins / validMatches.length) * 100).toFixed(1);
+
+                // Apply the CSS variable so the circle actually renders
+                const losses = validMatches.length - wins;
+                const winRateEl = document.getElementById('winRate');
+                winRateEl.style.setProperty('--p', winRate);
+                document.getElementById('winRateText').innerHTML = `${wins}W / ${losses}L<br><span style="font-size:0.7rem;color:#a0a0a0">${winRate}%</span>`;
 
                 const matchList = document.getElementById('matchList');
-                for (const [index, id] of data.matchIds.entries()) {
-                    const matchInfo = await Promise.all([matchData(id)]);
-                    const champName = matchInfo[0].info.participants.find(p => p.puuid === puuid).championName;
-                    const matchDuration = Math.floor(matchInfo[0].info.gameDuration / 60);
-                    const matchDurationSecond = matchInfo[0].info.gameDuration % 60;
+                validMatches.forEach((matchInfo, index) => {
+                    const participant = matchInfo.info.participants.find(p => p.puuid === puuid);
+                    const champName = participant.championName;
+                    const matchDuration = Math.floor(matchInfo.info.gameDuration / 60);
+                    const matchDurationSecond = matchInfo.info.gameDuration % 60;
+                    const won = participant.win;
+                    const lost = participant.loss;
+                    const kda = `${participant.kills}/${participant.deaths}/${participant.assists}`;
+                    const cs = participant.totalMinionsKilled + participant.neutralMinionsKilled;
+                    const gold = participant.goldEarned.toLocaleString();
+                    const damage = participant.totalDamageDealtToChampions.toLocaleString();
+                    const vision = participant.visionScore;
+
 
                     const card = document.createElement('div');
                     card.className = 'match-card';
+
+                    const header = document.createElement('div');
+                    header.className = 'match-card-header';
+
+                    const headerLeft = document.createElement('div');
+                    headerLeft.className = 'match-card-header-left';
 
                     const img = document.createElement('img');
                     img.src = championIconMap[champName] || '';
                     img.width = 32;
                     img.height = 32;
-                    img.style.verticalAlign = 'middle';
-                    img.style.marginRight = '10px';
-                    card.appendChild(img);
 
                     const info = document.createElement('span');
-                    info.textContent = `Match ${index + 1} - ${matchInfo[0].info.gameMode} - ${new Date(matchInfo[0].info.gameStartTimestamp).toLocaleString()} - ${champName} - ${matchDuration}m ${matchDurationSecond}s`;
-                    card.appendChild(info);
+                    info.textContent = `Match ${index + 1} - ${matchInfo.info.gameMode} - ${new Date(matchInfo.info.gameStartTimestamp).toLocaleString()} - ${champName} - ${matchDuration}m ${matchDurationSecond}s`;
+
+                    const resultBadge = document.createElement('span');
+                    resultBadge.textContent = won ? 'WIN' : 'LOSS';
+                    resultBadge.className = won ? 'match-result-win' : 'match-result-loss';
+
+                    const chevron = document.createElement('span');
+                    chevron.className = 'match-chevron';
+                    chevron.textContent = '▼';
+
+                    headerLeft.appendChild(img);
+                    headerLeft.appendChild(info);
+                    header.appendChild(headerLeft);
+
+                    const headerRight = document.createElement('div');
+                    headerRight.style.display = 'flex';
+                    headerRight.style.alignItems = 'center';
+                    headerRight.style.gap = '12px';
+                    headerRight.appendChild(resultBadge);
+                    headerRight.appendChild(chevron);
+                    header.appendChild(headerRight);
+
+                    card.appendChild(header);
+
+                    const details = document.createElement('div');
+                    details.className = 'match-details';
+                    details.innerHTML = `
+                        <div class="match-stat">
+                            <span class="match-stat-label">KDA</span>
+                            <span class="match-stat-value">${kda}</span>
+                        </div>
+                        <div class="match-stat">
+                            <span class="match-stat-label">CS</span>
+                            <span class="match-stat-value">${cs}</span>
+                        </div>
+                        <div class="match-stat">
+                            <span class="match-stat-label">Gold</span>
+                            <span class="match-stat-value">${gold}</span>
+                        </div>
+                        <div class="match-stat">
+                            <span class="match-stat-label">Damage</span>
+                            <span class="match-stat-value">${damage}</span>
+                        </div>
+                        <div class="match-stat">
+                            <span class="match-stat-label">Vision</span>
+                            <span class="match-stat-value">${vision}</span>
+                        </div>
+                    `;
+                    card.appendChild(details);
+
+                    card.addEventListener('click', () => {
+                        card.classList.toggle('expanded');
+                    });
 
                     matchList.appendChild(card);
-
-                }
+                });
                 document.getElementById('matchSection').style.display = 'block';
 
             } catch (error) {

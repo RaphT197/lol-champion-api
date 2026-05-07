@@ -19,10 +19,11 @@ app.use(express.static('public')) // serves static files from public folder
 const CACHE_DURATION = process.env.CACHE_DURATION || 60 * 60 * 1000; // 1 hour in ms
 const CHAMPION_URL = process.env.CHAMPION_URL || `https://ddragon.leagueoflegends.com/cdn/14.1.1/data/en_US/champion.json`
 const API_KEY = process.env.API_KEY
-console.log(`API Key: ${API_KEY}`)
 
+let cachedLore = {};
 let cachedChampions = null;
 let lastFetchTime = null;
+let timeStamp = null;
 
 
 function formatChampionName(champName) {
@@ -116,26 +117,31 @@ app.get(`/summoner/:name/:tagLine`, async (req, res) => {
 app.get('/champion/:name', async (req, res) => {
     try{
         const championName = req.params.name
-        const detailUrl = `https://ddragon.leagueoflegends.com/cdn/${process.env.VERSION}/data/en_US/champion/${championName}.json`
+        const loreCache = cachedLore[championName]
 
+        const loreCacheExpired = loreCache &&
+            (Date.now() - loreCache.timeStamp > CACHE_DURATION)
 
+        if (!loreCache || loreCacheExpired) {
+            const detailUrl = `https://ddragon.leagueoflegends.com/cdn/${process.env.VERSION}/data/en_US/champion/${championName}.json`
+            const detailResponse = await axios.get(detailUrl)
+            cachedLore[championName] = {
+                data: detailResponse.data.data[championName],
+                timeStamp: Date.now()
+            }
+
+        }
 
         const champions = await getChampions(); // calls function
         const champion = champions[championName] // finds specific champion
-
-        console.log('Raw param:', req.params.name)
-        console.log('After format:', championName)
-        console.log('Found champion:', !!champion)
 
         if(!champion) {
         return res.status(404).json({error: `Champion not found`})
         }  
 
-        const detailResponse = await axios.get(detailUrl)
-        const detailData = detailResponse.data
 
         const {name, title, id} = champion
-        const {lore} = detailData.data[championName]
+        const {lore} = cachedLore[championName].data
         const {hp, mp, movespeed, armor, spellblock, attackrange, attackdamage, attackspeed} = champion.stats
         const splashArt = `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${championName}_0.jpg`
 
