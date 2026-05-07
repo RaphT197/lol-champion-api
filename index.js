@@ -4,6 +4,7 @@ dotenv.config(); // loads environment variables from .env file
 const express = require('express'); // imports express
 const rateLimit = require('express-rate-limit'); // imports express-rate-limit
 const axios = require('axios'); //imports axios
+const path = require('path');
 
 const envport = process.env.PORT || 3000; // sets the port to the value of the PORT environment variable, or defaults to 3000 if not set
 
@@ -17,7 +18,7 @@ const app = express();
 app.set('trust proxy', 1);
 app.use(limiter); // applies rate limiting to all routes
 app.set('trust proxy', 1);
-app.use(express.static('public')) // serves static files from public folder
+app.use(express.static(path.join(__dirname, 'public')))
 
 const CACHE_DURATION = process.env.CACHE_DURATION || 60 * 60 * 1000; // 1 hour in ms
 const CHAMPION_URL = process.env.CHAMPION_URL || `https://ddragon.leagueoflegends.com/cdn/14.1.1/data/en_US/champion.json`
