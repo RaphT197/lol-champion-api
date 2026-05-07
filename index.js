@@ -30,15 +30,7 @@ let lastFetchTime = null;
 let timeStamp = null;
 
 
-const QUEUE_NAMES = {                                                                                        
-      420: 'Ranked Solo/Duo',                               
-      440: 'Ranked Flex',                                                                                      
-      400: 'Normal Draft',                                  
-      430: 'Normal Blind',
-      450: 'ARAM',                                                                                             
-      900: 'URF',
-      0: 'Custom'
-  };        
+      
 
 function formatChampionName(champName) {
     let cleanName = champName
