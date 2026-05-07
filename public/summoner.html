@@ -19,6 +19,11 @@
             padding: 20px;
         }
 
+        .container {
+            max-width: 780px;
+            margin: 0 auto;
+        }
+
         #backButton {
             color: #c8aa6e;
             text-decoration: none;
@@ -35,16 +40,39 @@
         }
 
         #summonerHeader {
-            margin-bottom: 40px;
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            background: #1a1a2e;
+            border: 1px solid #c8aa6e;
+            border-radius: 10px;
+            padding: 24px;
+            margin-bottom: 32px;
         }
 
-        #summonerHeader h1 {
-            font-size: 2.5rem;
-            margin-bottom: 8px;
+        #profileIcon img {
+            border-radius: 50%;
+            border: 3px solid #c8aa6e;
+            display: block;
+        }
+
+        #summonerInfo {
+            flex: 1;
+        }
+
+        #summonerInfo h1 {
+            font-size: 1.8rem;
+            margin-bottom: 4px;
+        }
+
+        #summonerLevel {
+            color: #a0a0a0;
+            font-size: 14px;
+            margin-bottom: 0;
         }
 
         #winRate {
-            width: 150px;
+            width: 110px;
             aspect-ratio: 1;
             border-radius: 50%;
             background: conic-gradient(#3bef6e calc(var(--p) * 1%), #f14141 0);
@@ -52,10 +80,9 @@
             align-items: center;
             justify-content: center;
             position: relative;
-            margin: 12px 0;
+            flex-shrink: 0;
         }
 
-        /* Donut hole — a dark circle layered on top of the gradient */
         #winRate::before {
             content: '';
             position: absolute;
@@ -65,23 +92,17 @@
             width: 68%;
             height: 68%;
             border-radius: 50%;
-            background: #0a0a0f;
+            background: #1a1a2e;
         }
 
         #winRateText {
-            position: relative; /* sits above the ::before pseudo-element */
+            position: relative;
             z-index: 1;
             text-align: center;
-            font-size: 0.85rem;
+            font-size: 0.75rem;
             font-weight: bold;
             color: #c8aa6e;
             line-height: 1.4;
-        }
-
-        #summonerHeader p {
-            color: #a0a0a0;
-            font-size: 13px;
-            word-break: break-all;
         }
 
         #matchSection h2 {
@@ -94,7 +115,13 @@
             display: flex;
             flex-direction: column;
             gap: 8px;
-            max-width: 700px;
+        }
+
+        @media (max-width: 520px) {
+            #summonerHeader {
+                flex-direction: column;
+                text-align: center;
+            }
         }
 
         .match-card {
@@ -189,6 +216,7 @@
     </style>
 </head>
 <body>
+<div class="container">
 
     <a href="/" id="backButton">← Back to Champions</a>
 
@@ -196,10 +224,11 @@
     <div id="errorMsg" style="display:none;"></div>
 
     <div id="summonerHeader" style="display:none;">
-        <h1 id="summonerName"></h1>
-        <p id="profileIcon"></p>
-        <p id="summonerLevel"></p>
-        <p id="summonerPuuid"></p>
+        <div id="profileIcon"></div>
+        <div id="summonerInfo">
+            <h1 id="summonerName"></h1>
+            <p id="summonerLevel"></p>
+        </div>
         <div id="winRate">
             <div id="winRateText">Win Rate</div>
         </div>
@@ -209,6 +238,8 @@
         <h2>Recent Matches</h2>
         <div id="matchList"></div>
     </div>
+
+</div>
 
     <script>
         const urlParams = new URLSearchParams(window.location.search);
@@ -251,9 +282,7 @@
                 document.getElementById('summonerName').textContent = data.summonerGameName;
                 document.getElementById('summonerLevel').textContent = `Level: ${summonerData.summonerLevel}`;
                 document.getElementById('profileIcon').innerHTML = `<img src="${summonerIconImg}" width ="120" height="120" alt="Profile Icon" />`;
-                document.getElementById('summonerPuuid').textContent = `PUUID: ${data.summonerData.puuid}`; 
-                document.getElementById('summonerHeader').style.display = 'block';
-                document.getElementById('winRate').style.display = 'block';
+                document.getElementById('summonerHeader').style.display = 'flex';
 
 
                 const allMatchInfo = await Promise.all(data.matchIds.map(id => matchData(id)));
@@ -300,8 +329,9 @@
                     img.width = 32;
                     img.height = 32;
 
-                    const info = document.createElement('span');
-                    info.textContent = `Match ${index + 1} - ${matchInfo.info.gameMode} - ${new Date(matchInfo.info.gameStartTimestamp).toLocaleString()} - ${champName} - ${matchDuration}m ${matchDurationSecond}s`;
+                    const info = document.createElement('div');
+                    const date = new Date(matchInfo.info.gameStartTimestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                    info.innerHTML = `<div style="font-weight:bold;font-size:14px;">${champName}</div><div style="color:#a0a0a0;font-size:11px;margin-top:2px;">${matchInfo.info.gameMode} &middot; ${matchDuration}m ${matchDurationSecond}s &middot; ${date}</div>`;
 
                     const resultBadge = document.createElement('span');
                     resultBadge.textContent = won ? 'WIN' : 'LOSS';
