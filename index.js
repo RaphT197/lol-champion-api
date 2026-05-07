@@ -8,12 +8,15 @@ const axios = require('axios'); //imports axios
 const envport = process.env.PORT || 3000; // sets the port to the value of the PORT environment variable, or defaults to 3000 if not set
 
 const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100 // limit each IP to 100 requests per windowMs
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    validate: { trustProxy: false, xForwardedForHeader: false }
 });
 
 const app = express();
+app.set('trust proxy', 1);
 app.use(limiter); // applies rate limiting to all routes
+app.set('trust proxy', 1);
 app.use(express.static('public')) // serves static files from public folder
 
 const CACHE_DURATION = process.env.CACHE_DURATION || 60 * 60 * 1000; // 1 hour in ms
@@ -295,7 +298,9 @@ app.get('/lol/match/v5/matches/:matchId', async (req, res) => {
     }
 })
 
+module.exports = app;
 
-app.listen(envport, () => {
-    console.log(`Server is running on port ${envport}`)
-})
+//commented it out to host on vercel
+// app.listen(envport, () => {
+//     console.log(`Server is running on port ${envport}`)
+// })
