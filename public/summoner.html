@@ -316,6 +316,8 @@
                 validMatches.forEach((matchInfo, index) => {
                     const queueName = QUEUE_NAMES[matchInfo.info.queueId] || matchInfo.info.gameMode;
                     const participant = matchInfo.info.participants.find(p => p.puuid === puuid);
+                    const enemyTeam = matchInfo.info.particiipants.filter(p => p.teamId !== participant.teamId);
+                    const allyTeam = matchInfo.info.participants.filter(p => p.teamId === participant.teamId);
                     const champName = participant.championName;
                     const matchDuration = Math.floor(matchInfo.info.gameDuration / 60);
                     const matchDurationSecond = matchInfo.info.gameDuration % 60;
@@ -382,6 +384,14 @@
                         <div class="match-stat">
                             <span class="match-stat-label">Gold</span>
                             <span class="match-stat-value">${gold}</span>
+                        </div>
+                        <div class="match-stat">
+                            <span class="match-stat-label">Ally Team</span>
+                            <span class="match-stat-value">${allyTeam.map(p => p.championName).join(', ')}</span>
+                        </div>
+                        <div class="match-stat">
+                            <span class="match-stat-label">Enemy Team</span>
+                            <span class="match-stat-value">${enemyTeam.map(p => p.championName).join(', ')}</span>
                         </div>
                         <div class="match-stat">
                             <span class="match-stat-label">Damage</span>
