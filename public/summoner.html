@@ -316,7 +316,7 @@
                 validMatches.forEach((matchInfo, index) => {
                     const queueName = QUEUE_NAMES[matchInfo.info.queueId] || matchInfo.info.gameMode;
                     const participant = matchInfo.info.participants.find(p => p.puuid === puuid);
-                    const enemyTeam = matchInfo.info.particiipants.filter(p => p.teamId !== participant.teamId);
+                    const enemyTeam = matchInfo.info.participants.filter(p => p.teamId !== participant.teamId);
                     const allyTeam = matchInfo.info.participants.filter(p => p.teamId === participant.teamId);
                     const champName = participant.championName;
                     const matchDuration = Math.floor(matchInfo.info.gameDuration / 60);
