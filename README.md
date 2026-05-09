@@ -77,7 +77,7 @@ nodemon .
 
 ## 🗺️ Roadmap
 
-- [ ] Summoner profile page with profile icon and level
+- [X] Summoner profile page with profile icon and level
 - [ ] Summoner rank display
 - [ ] Most played champions
 - [ ] Champion masteries
