@@ -15,7 +15,6 @@ const limiter = rateLimit({
 });
 
 const app = express();
-app.set('trust proxy', 1);
 app.use(limiter); // applies rate limiting to all routes
 app.set('trust proxy', 1);
 app.use(express.static(path.join(__dirname, 'public')))
@@ -25,21 +24,12 @@ const CHAMPION_URL = process.env.CHAMPION_URL || `https://ddragon.leagueoflegend
 const API_KEY = process.env.API_KEY
 
 let cachedLore = {};
+let skinCached = {};
 let cachedChampions = null;
 let lastFetchTime = null;
 let timeStamp = null;
 
 
-      
-
-function formatChampionName(champName) {
-    let cleanName = champName
-            .replaceAll(".", " ")
-            .split(" ")
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-            .join(' ')
-            return cleanName
-}
 
 async function getSummonerData (summonerName, tagLine) {
 
@@ -218,28 +208,40 @@ app.get('/champions', async (req, res) => {
 app.get('/champion/:name/skins', async (req,res) => {
     try{
         const champName = req.params.name
+        const skinCache = skinCached[champName]
 
-        const url = `https://ddragon.leagueoflegends.com/cdn/${process.env.VERSION}/data/en_US/champion/${champName}.json`
+        const skinCacheExpired = skinCache &&
+            (Date.now() - skinCache.timeStamp > CACHE_DURATION)
 
-        const response = await axios.get(url)
+        if (!skinCache || skinCacheExpired) {
+            const detailUrl = `https://ddragon.leagueoflegends.com/cdn/${process.env.VERSION}/data/en_US/champion/${champName}.json`
+            const response = await axios.get(detailUrl)
+            const skinArray = response.data.data[champName].skins
+            skinCached[champName] = {
+                data: skinArray,
+                timeStamp: Date.now()
+                }
+            }
+    
 
-        const skinArray = response.data.data[champName].skins
+        const skinArray = skinCached[champName].data
             .filter(skin => !skin.parentSkin)
             .map(skins => {
                 const skinNumber = skins.num
                 const skinName = skins.name
                 const skinURL = `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${champName}_${skinNumber}.jpg`
-            
-            return {
-                skinNumber,
-                skinName,
-                skinURL
-            }
+
+                return {
+                    skinName,
+                    skinNumber,
+                    skinURL
+                }
             })
 
         res.json(skinArray)
 
-    } catch(error) { console.error(error.message);
+        } catch(error) {
+        console.error(error.message);
 
         if(error.response && error.response.status === 404){
             res.status(404).json({error: `Champion not found`})
@@ -247,7 +249,8 @@ app.get('/champion/:name/skins', async (req,res) => {
             res.status(500).json({error: `Something went wrong.`})
         }
     }
-}) 
+    
+}); 
 
 app.get('/lol/summoner/v4/summoners/by-puuid/:puuid', async (req, res) => {
     try {
@@ -305,7 +308,8 @@ app.get('/lol/match/v5/matches/:matchId', async (req, res) => {
 
 module.exports = app;
 
-//commented it out to host on vercel
-// app.listen(envport, () => {
-//     console.log(`Server is running on port ${envport}`)
-// })
+if (require.main === module) {
+    app.listen(envport, () => {
+        console.log(`Server is running on port ${envport}`)
+    })
+}

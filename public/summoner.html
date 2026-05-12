@@ -166,16 +166,28 @@
             margin-top: 0;
             padding-top: 0;
             border-top: none;
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
             max-height: 0;
             overflow: hidden;
             transition: max-height 0.3s ease, padding-top 0.3s ease, margin-top 0.3s ease;
         }
 
+        .match-stats-row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+        }
+
+        .match-teams-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
         .match-card.expanded .match-details {
-            max-height: 200px;
+            max-height: 500px;
             margin-top: 12px;
             padding-top: 12px;
             border-top: 1px solid #3a3a5a;
@@ -255,7 +267,7 @@
                     440: 'Ranked Flex',                                                                                      
                     400: 'Normal Draft',                                  
                     430: 'Normal Blind',
-                    450: 'ARAM',                                                                                             
+                    450: 'ARAM', 
                     900: 'URF',
                     0: 'Custom'
                 };  
@@ -317,7 +329,9 @@
                     const queueName = QUEUE_NAMES[matchInfo.info.queueId] || matchInfo.info.gameMode;
                     const participant = matchInfo.info.participants.find(p => p.puuid === puuid);
                     const enemyTeam = matchInfo.info.participants.filter(p => p.teamId !== participant.teamId);
+                    console.log(enemyTeam)
                     const allyTeam = matchInfo.info.participants.filter(p => p.teamId === participant.teamId);
+                    const summonerNameAlly = allyTeam.filter(p => p.puuid !== puuid).map(p => p.summonerName).join(', ');
                     const champName = participant.championName;
                     const matchDuration = Math.floor(matchInfo.info.gameDuration / 60);
                     const matchDurationSecond = matchInfo.info.gameDuration % 60;
@@ -373,33 +387,47 @@
                     const details = document.createElement('div');
                     details.className = 'match-details';
                     details.innerHTML = `
-                        <div class="match-stat">
-                            <span class="match-stat-label">KDA</span>
-                            <span class="match-stat-value">${kda}</span>
+                        <div class="match-stats-row">
+                            <div class="match-stat">
+                                <span class="match-stat-label">KDA</span>
+                                <span class="match-stat-value">${kda}</span>
+                            </div>
+                            <div class="match-stat">
+                                <span class="match-stat-label">CS</span>
+                                <span class="match-stat-value">${cs}</span>
+                            </div>
+                            <div class="match-stat">
+                                <span class="match-stat-label">Gold</span>
+                                <span class="match-stat-value">${gold}</span>
+                            </div>
+                            <div class="match-stat">
+                                <span class="match-stat-label">Damage</span>
+                                <span class="match-stat-value">${damage}</span>
+                            </div>
+                            <div class="match-stat">
+                                <span class="match-stat-label">Vision</span>
+                                <span class="match-stat-value">${vision}</span>
+                            </div>
                         </div>
-                        <div class="match-stat">
-                            <span class="match-stat-label">CS</span>
-                            <span class="match-stat-value">${cs}</span>
-                        </div>
-                        <div class="match-stat">
-                            <span class="match-stat-label">Gold</span>
-                            <span class="match-stat-value">${gold}</span>
-                        </div>
-                        <div class="match-stat">
-                            <span class="match-stat-label">Ally Team</span>
-                            <span class="match-stat-value">${allyTeam.map(p => p.championName).join(', ')}</span>
-                        </div>
-                        <div class="match-stat">
-                            <span class="match-stat-label">Enemy Team</span>
-                            <span class="match-stat-value">${enemyTeam.map(p => p.championName).join(', ')}</span>
-                        </div>
-                        <div class="match-stat">
-                            <span class="match-stat-label">Damage</span>
-                            <span class="match-stat-value">${damage}</span>
-                        </div>
-                        <div class="match-stat">
-                            <span class="match-stat-label">Vision</span>
-                            <span class="match-stat-value">${vision}</span>
+                        <div class="match-teams-row">
+                            <div class="match-stat">
+                                <span class="match-stat-label">Ally Team</span>
+                                ${allyTeam.map(p => `
+                                    <div style="margin-bottom:6px;">
+                                        <div class="match-stat-value" style="font-size:12px;">${p.riotIdGameName}</div>
+                                        <div style="color:#a0a0a0;font-size:11px;">${p.championName}</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <div class="match-stat">
+                                <span class="match-stat-label">Enemy Team</span>
+                                ${enemyTeam.map(p => `
+                                    <div style="margin-bottom:6px;">
+                                        <div class="match-stat-value" style="font-size:12px;">${p.riotIdGameName}</div>
+                                        <div style="color:#a0a0a0;font-size:11px;">${p.championName}</div>
+                                    </div>
+                                `).join('')}
+                            </div>
                         </div>
                     `;
                     card.appendChild(details);
