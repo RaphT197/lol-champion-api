@@ -56,6 +56,12 @@
             display: block;
         }
 
+        /* #summonerRankImage img {
+            border-radius: 0%;
+            border: 3px solid #c8aa6e;
+            display: block;
+        } */
+
         #summonerInfo {
             flex: 1;
         }
@@ -239,7 +245,10 @@
         <div id="profileIcon"></div>
         <div id="summonerInfo">
             <h1 id="summonerName"></h1>
+            <h2 id="queueType"></h2>
             <p id="summonerLevel"></p>
+            <p id="summonerRankImage"></p>           
+            <p id="summonerRank"></p>
         </div>
         <div id="winRate">
             <div id="winRateText">Win Rate</div>
@@ -262,6 +271,18 @@
         async function getSummonerInfo() {
             try {
 
+                const RANK_IMAGES = {
+                    "IRON": 'resources/Ranked Emblems Latest/Wings/Iron.png',
+                    "BRONZE": "resources/Ranked Emblems Latest/Wings/Bronze.png",
+                    "SILVER": "resources/Ranked Emblems Latest/Wings/Silver.png",
+                    "GOLD": "resources/Ranked Emblems Latest/Wings/Gold.png",
+                    "PLATINUM": 'resources/RankedEmblems/Rank=Platinum.png',
+                    "EMERALD": "resources/Ranked Emblems Latest/Wings/Emerald.png",
+                    "DIAMOND": "resources/Ranked Emblems Latest/Wings/Diamond.png",
+                    "MASTER": "resources/Ranked Emblems Latest/Wings/Master.png",
+                    "GRANDMASTER": "resources/Ranked Emblems Latest/Wings/Grandmaster.png"                    
+                }
+
                 const QUEUE_NAMES = {                                                                                        
                     420: 'Ranked Solo/Duo',                               
                     440: 'Ranked Flex',                                                                                      
@@ -274,6 +295,9 @@
 
                 const response = await fetch(`/summoner/${summonerName}/${tagLine}`);
                 const data = await response.json();
+                const rankInfo = data.rankInfo[0]
+                console.log(rankInfo.tier)
+                console.log(data.rankInfo)
 
                 if (!response.ok) {
                     throw new Error(data.error || 'Failed to fetch summoner.');
@@ -283,6 +307,7 @@
                     throw new Error('Failed to fetch summoner data.');
                 }
 
+                
                 const championsResponse = await fetch('/champions');
                 const championsData = await championsResponse.json();
                 const championIconMap = {};
@@ -290,11 +315,14 @@
                     championIconMap[champ.id] = champ.sprite;
                 });
 
+                
                 const puuid = data.summonerData.puuid;
 
                 const summonerResponse = await fetch(`/lol/summoner/v4/summoners/by-puuid/${puuid}`);
                 const summonerData = await summonerResponse.json();
                 const summonerIcon = summonerData.profileIconId;
+                const rankIcon = RANK_IMAGES[rankInfo.tier]
+                console.log(rankIcon)
                 const summonerIconImg = `https://ddragon.leagueoflegends.com/cdn/16.9.1/img/profileicon/${summonerIcon}.png`;
 
                 if (!summonerResponse.ok) {
@@ -304,12 +332,21 @@
                 document.getElementById('loading').style.display = 'none';
 
                 document.getElementById('summonerName').textContent = data.summonerGameName;
+                document.getElementById('queueType').textContent = rankInfo.queueType
                 document.getElementById('summonerLevel').textContent = `Level: ${summonerData.summonerLevel}`;
+                document.getElementById('summonerRankImage').innerHTML = `<img src="${rankIcon}" width="120" height="120" alt="Rank Icon" />`;
+                document.getElementById('summonerRank').textContent = `Current Rank: ${rankInfo.tier} ${rankInfo.rank}  ` 
                 document.getElementById('profileIcon').innerHTML = `<img src="${summonerIconImg}" width ="120" height="120" alt="Profile Icon" />`;
                 document.getElementById('summonerHeader').style.display = 'flex';
 
 
-                const allMatchInfo = await Promise.all(data.matchIds.map(id => matchData(id)));
+                //const allMatchInfo = await Promise.all(data.matchIds.map(id => matchData(id)));
+
+                let allMatchInfo = []
+
+                for (const id of data.matchIds) {
+                    allMatchInfo.push(await matchData(id));
+                }  
 
                 // Some fetches may fail (rate limit) — filter to only ones with valid data
                 const validMatches = allMatchInfo.filter(m => m.info && m.info.participants);
@@ -325,11 +362,11 @@
                 document.getElementById('winRateText').innerHTML = `${wins}W / ${losses}L<br><span style="font-size:0.7rem;color:#a0a0a0">${winRate}%</span>`;
 
                 const matchList = document.getElementById('matchList');
+
                 validMatches.forEach((matchInfo, index) => {
                     const queueName = QUEUE_NAMES[matchInfo.info.queueId] || matchInfo.info.gameMode;
                     const participant = matchInfo.info.participants.find(p => p.puuid === puuid);
                     const enemyTeam = matchInfo.info.participants.filter(p => p.teamId !== participant.teamId);
-                    console.log(enemyTeam)
                     const allyTeam = matchInfo.info.participants.filter(p => p.teamId === participant.teamId);
                     const summonerNameAlly = allyTeam.filter(p => p.puuid !== puuid).map(p => p.summonerName).join(', ');
                     const champName = participant.championName;
@@ -415,7 +452,9 @@
                                 ${allyTeam.map(p => `
                                     <div style="margin-bottom:6px;">
                                         <div class="match-stat-value" style="font-size:12px;">${p.riotIdGameName}</div>
-                                        <div style="color:#a0a0a0;font-size:11px;">${p.championName}</div>
+                                        <div style="color:#a0a0a0;font-size:12px;">${p.championName}</div>
+                                        <div style="color:#a0a0a0;font-si  <div style="color:#a0a0a0;font-size:11px;">KDA: ${p.kills}/${p.deaths}/${p.assists}</div>
+                                        <div style="color:#a0a0a0;font-size:11px;">CS: ${p.totalMinionsKilled + p.neutralMinionsKilled}</div>
                                     </div>
                                 `).join('')}
                             </div>
@@ -424,7 +463,10 @@
                                 ${enemyTeam.map(p => `
                                     <div style="margin-bottom:6px;">
                                         <div class="match-stat-value" style="font-size:12px;">${p.riotIdGameName}</div>
-                                        <div style="color:#a0a0a0;font-size:11px;">${p.championName}</div>
+                                        <div style="color:#a0a0a0;font-size:12px;">${p.championName}</div>
+                                        <div style="color:#a0a0a0;font-si  <div style="color:#a0a0a0;font-size:11px;">KDA: ${p.kills}/${p.deaths}/${p.assists}</div>
+                                        <div style="color:#a0a0a0;font-size:11px;">${p.totalMinionsKilled + p.neutralMinionsKilled}</div>                                        
+                                        
                                     </div>
                                 `).join('')}
                             </div>

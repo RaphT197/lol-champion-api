@@ -1,10 +1,23 @@
 const dotenv = require('dotenv'); // imports dotenv
 dotenv.config(); // loads environment variables from .env file
 
+const CACHE_DURATION = process.env.CACHE_DURATION || 60 * 60 * 1000; // 1 hour in ms
+const CHAMPION_URL = process.env.CHAMPION_URL || `https://ddragon.leagueoflegends.com/cdn/14.1.1/data/en_US/champion.json`
+const API_KEY = process.env.API_KEY
 const express = require('express'); // imports express
 const rateLimit = require('express-rate-limit'); // imports express-rate-limit
 const axios = require('axios'); //imports axios
 const path = require('path');
+const { match } = require('assert');
+
+const HEADER = {
+    
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Charset": "application/x-www-form-urlencoded; charset=UTF-8",
+    "Origin": "https://developer.riotgames.com",
+    "X-Riot-Token": API_KEY
+}
 
 const envport = process.env.PORT || 3000; // sets the port to the value of the PORT environment variable, or defaults to 3000 if not set
 
@@ -15,16 +28,15 @@ const limiter = rateLimit({
 });
 
 const app = express();
+app.use(express.static(path.join(__dirname, 'public')))
+app.use( '/resources',express.static(path.join(__dirname, 'resources')))
 app.use(limiter); // applies rate limiting to all routes
 app.set('trust proxy', 1);
-app.use(express.static(path.join(__dirname, 'public')))
 
-const CACHE_DURATION = process.env.CACHE_DURATION || 60 * 60 * 1000; // 1 hour in ms
-const CHAMPION_URL = process.env.CHAMPION_URL || `https://ddragon.leagueoflegends.com/cdn/14.1.1/data/en_US/champion.json`
-const API_KEY = process.env.API_KEY
 
 let cachedLore = {};
 let skinCached = {};
+let matchCached = {};
 let cachedChampions = null;
 let lastFetchTime = null;
 let timeStamp = null;
@@ -69,33 +81,50 @@ async function getMatchIds(puuid) {
     const url = `https://americas.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?start=0&count=20`
 
     const response = await axios.get(url, {
-        headers: {
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
-            "Accept-Language": "en-US,en;q=0.9",
-            "Accept-Charset": "application/x-www-form-urlencoded; charset=UTF-8",
-            "Origin": "https://developer.riotgames.com",
-            "X-Riot-Token": API_KEY
-        }
+        headers: HEADER
     })
     return response.data
 }
 
+async function getRankData(puuid) {
+    const rankUrl = `https://na1.api.riotgames.com/lol/league/v4/entries/by-puuid/${puuid}`
+    const rankResponse = await axios.get(rankUrl, {
+        headers: HEADER
+    })
+
+    return rankResponse.data
+}
 
 app.get(`/summoner/:name/:tagLine`, async (req, res) => {
     try {
         const summonerName = req.params.name
         const tagLine = req.params.tagLine
 
+
         const summonerData = await getSummonerData(summonerName, tagLine)
+        //console.log(summonerData)
         const matchIds = await getMatchIds(summonerData.puuid)
+        const puuid = summonerData.puuid
         const summonerGameName = summonerData.gameName + '#' + summonerData.tagLine
-        console.log(summonerGameName)
+        const rankData = await getRankData(puuid)
+        const rankInfo = rankData.map(info => 
+            ({
+                queueType: info.queueType,
+                tier: info.tier,
+                rank: info.rank,
+                leaguePoints: info.leaguePoints,
+                wins: info.wins,
+                losses: info.losses
+            }))
+
+        //console.log(summonerGameName)
 
 
         res.json({
             summonerData,
             matchIds,
-            summonerGameName
+            summonerGameName,
+            rankInfo
         })
 
     } catch (error) {
@@ -259,9 +288,7 @@ app.get('/lol/summoner/v4/summoners/by-puuid/:puuid', async (req, res) => {
         const url = `https://na1.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${puuid}`;
 
         const response = await axios.get(url, {
-            headers: {
-                'X-Riot-Token': process.env.API_KEY
-            }
+            headers: HEADER
         });
 
         res.json(response.data);
@@ -279,22 +306,36 @@ app.get('/lol/summoner/v4/summoners/by-puuid/:puuid', async (req, res) => {
 app.get('/lol/match/v5/matches/:matchId', async (req, res) => {
     try {
         const matchId = req.params.matchId;
+        const matchCache = matchCached[matchId]
 
-        const url = `https://americas.api.riotgames.com/lol/match/v5/matches/${matchId}`;
+        const matchCacheExpired = matchCache &&
+            (Date.now() - matchCache.timeStamp > process.env.MATCH_CACHE_DURATION)
 
-        const response = await axios.get(url, {
-            headers: {
-                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
-                "Accept-Language": "en-US,en;q=0.9",
-                "Accept-Charset": "application/x-www-form-urlencoded; charset=UTF-8",
-                "Origin": "https://developer.riotgames.com",
-                "X-Riot-Token": API_KEY
+        if (!matchCache || matchCacheExpired) {
+
+            const url = `https://americas.api.riotgames.com/lol/match/v5/matches/${matchId}`;
+            const response = await axios.get(url, {
+                headers: {
+                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+                    "Accept-Language": "en-US,en;q=0.9",
+                    "Accept-Charset": "application/x-www-form-urlencoded; charset=UTF-8",
+                    "Origin": "https://developer.riotgames.com",
+                    "X-Riot-Token": API_KEY
+                }
+            });
+            matchCached[matchId] = {
+                data: response.data,
+                timeStamp: Date.now()
             }
-        });
+        } else {
+            console.log("Using cached match data for ID:", matchId);
+        }
 
+        const match = matchCached[matchId].data;
+        const { gameId, gameMode, gameType, gameDuration } = match.info;
 
+        res.json(matchCached[matchId].data);
 
-        res.json(response.data);
     } catch (error) {
         console.error(error.message);
 
@@ -305,6 +346,7 @@ app.get('/lol/match/v5/matches/:matchId', async (req, res) => {
         }
     }
 })
+
 
 module.exports = app;
 
