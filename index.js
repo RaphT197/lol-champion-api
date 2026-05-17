@@ -107,6 +107,7 @@ app.get(`/summoner/:name/:tagLine`, async (req, res) => {
         const puuid = summonerData.puuid
         const summonerGameName = summonerData.gameName + '#' + summonerData.tagLine
         const rankData = await getRankData(puuid)
+        console.log(rankData)
         const rankInfo = rankData.map(info => 
             ({
                 queueType: info.queueType,

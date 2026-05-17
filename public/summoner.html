@@ -193,7 +193,7 @@
         }
 
         .match-card.expanded .match-details {
-            max-height: 500px;
+            max-height: 700px;
             margin-top: 12px;
             padding-top: 12px;
             border-top: 1px solid #3a3a5a;
@@ -245,11 +245,12 @@
         <div id="profileIcon"></div>
         <div id="summonerInfo">
             <h1 id="summonerName"></h1>
-            <h2 id="queueType"></h2>
             <p id="summonerLevel"></p>
-            <p id="summonerRankImage"></p>           
-            <p id="summonerRank"></p>
+            <h2 id="queueType"></h2>
+            <p id="summonerRank"></p>            
+            <p id="summonerRankImage"></p>  
         </div>
+        
         <div id="winRate">
             <div id="winRateText">Win Rate</div>
         </div>
@@ -264,6 +265,47 @@
 
     <script>
 
+        const RANK_NOT_CAPS = {
+            "IRON": "Iron",
+            "BRONZE": "Bronze",
+            "SILVER": "Silver",
+            "GOLD": "Gold",
+            "PLATINUM": "Platinum",
+            "EMERALD": "Emerald",
+            "DIAMOND": "Diamond",
+            "MASTER": "Master",
+            "GRANDMASTER": "Grandmaster",
+            "CHALLENGER": "Challenger"
+        }
+
+        const RANK_IMAGES = {
+                    "IRON": 'resources/RankedEmblems/Rank=Iron.png',
+                    "BRONZE": 'resources/RankedEmblems/Rank=Bronze.png',
+                    "SILVER": 'resources/RankedEmblems/Rank=Silver.png',
+                    "GOLD": 'resources/RankedEmblems/Rank=Gold.png',
+                    "PLATINUM": 'resources/RankedEmblems/Rank=Platinum.png',
+                    "EMERALD": 'resources/RankedEmblems/Rank=Emerald.png',
+                    "DIAMOND": 'resources/RankedEmblems/Rank=Diamond.png',
+                    "MASTER": 'resources/RankedEmblems/Rank=Master.png',
+                    "GRANDMASTER": 'resources/RankedEmblems/Rank=Grandmaster.png',
+                    "CHALLENGER": 'resources/RankedEmblems/Rank=Challenger.png'                   
+                }
+
+        const RANKED_TYPE = {
+                    "RANKED_SOLO_5x5": "Ranked Solo/Duo",
+                    "RANKED_FLEX_SR": "Ranked Flex"
+                }
+
+        const QUEUE_NAMES = {                                                                                        
+                    420: 'Ranked Solo/Duo',                               
+                    440: 'Ranked Flex',
+                    400: 'Normal Draft',                                  
+                    430: 'Normal Blind',
+                    450: 'ARAM', 
+                    900: 'URF',
+                    0: 'Custom'
+                };  
+
         const urlParams = new URLSearchParams(window.location.search);
         const summonerName = urlParams.get('name');
         const tagLine = urlParams.get('tag');
@@ -271,27 +313,7 @@
         async function getSummonerInfo() {
             try {
 
-                const RANK_IMAGES = {
-                    "IRON": 'resources/Ranked Emblems Latest/Wings/Iron.png',
-                    "BRONZE": "resources/Ranked Emblems Latest/Wings/Bronze.png",
-                    "SILVER": "resources/Ranked Emblems Latest/Wings/Silver.png",
-                    "GOLD": "resources/Ranked Emblems Latest/Wings/Gold.png",
-                    "PLATINUM": 'resources/RankedEmblems/Rank=Platinum.png',
-                    "EMERALD": "resources/Ranked Emblems Latest/Wings/Emerald.png",
-                    "DIAMOND": "resources/Ranked Emblems Latest/Wings/Diamond.png",
-                    "MASTER": "resources/Ranked Emblems Latest/Wings/Master.png",
-                    "GRANDMASTER": "resources/Ranked Emblems Latest/Wings/Grandmaster.png"                    
-                }
 
-                const QUEUE_NAMES = {                                                                                        
-                    420: 'Ranked Solo/Duo',                               
-                    440: 'Ranked Flex',                                                                                      
-                    400: 'Normal Draft',                                  
-                    430: 'Normal Blind',
-                    450: 'ARAM', 
-                    900: 'URF',
-                    0: 'Custom'
-                };  
 
                 const response = await fetch(`/summoner/${summonerName}/${tagLine}`);
                 const data = await response.json();
@@ -322,6 +344,8 @@
                 const summonerData = await summonerResponse.json();
                 const summonerIcon = summonerData.profileIconId;
                 const rankIcon = RANK_IMAGES[rankInfo.tier]
+                console.log(rankInfo.queueType)
+                const rankFixed = RANKED_TYPE[rankInfo.queueType]
                 console.log(rankIcon)
                 const summonerIconImg = `https://ddragon.leagueoflegends.com/cdn/16.9.1/img/profileicon/${summonerIcon}.png`;
 
@@ -332,10 +356,10 @@
                 document.getElementById('loading').style.display = 'none';
 
                 document.getElementById('summonerName').textContent = data.summonerGameName;
-                document.getElementById('queueType').textContent = rankInfo.queueType
                 document.getElementById('summonerLevel').textContent = `Level: ${summonerData.summonerLevel}`;
                 document.getElementById('summonerRankImage').innerHTML = `<img src="${rankIcon}" width="120" height="120" alt="Rank Icon" />`;
-                document.getElementById('summonerRank').textContent = `Current Rank: ${rankInfo.tier} ${rankInfo.rank}  ` 
+                document.getElementById('queueType').textContent = `${rankFixed}`
+                document.getElementById('summonerRank').textContent = `Current Rank: ${RANK_NOT_CAPS[rankInfo.tier]} ${rankInfo.rank}  ` 
                 document.getElementById('profileIcon').innerHTML = `<img src="${summonerIconImg}" width ="120" height="120" alt="Profile Icon" />`;
                 document.getElementById('summonerHeader').style.display = 'flex';
 
@@ -452,7 +476,8 @@
                                 ${allyTeam.map(p => `
                                     <div style="margin-bottom:6px;">
                                         <div class="match-stat-value" style="font-size:12px;">${p.riotIdGameName}</div>
-                                        <div style="color:#a0a0a0;font-size:12px;">${p.championName}</div>
+                                        <div style="color:#a0a0a0;font-size:12px;"><img src="${championIconMap[p.championName]}" width=32, height=32 alt="champion icon for all champions"></div>
+                                        <div style="color:#a0a0a0;font-size:12px;"> ${p.championName}</div>
                                         <div style="color:#a0a0a0;font-si  <div style="color:#a0a0a0;font-size:11px;">KDA: ${p.kills}/${p.deaths}/${p.assists}</div>
                                         <div style="color:#a0a0a0;font-size:11px;">CS: ${p.totalMinionsKilled + p.neutralMinionsKilled}</div>
                                     </div>
@@ -463,10 +488,10 @@
                                 ${enemyTeam.map(p => `
                                     <div style="margin-bottom:6px;">
                                         <div class="match-stat-value" style="font-size:12px;">${p.riotIdGameName}</div>
-                                        <div style="color:#a0a0a0;font-size:12px;">${p.championName}</div>
+                                        <div style="color:#a0a0a0;font-size:12px;"><img src="${championIconMap[p.championName]}" width=32, height=32 alt="champion icon for all champions"></div>
+                                        <div style="color:#a0a0a0;font-size:12px;"> ${p.championName}</div>
                                         <div style="color:#a0a0a0;font-si  <div style="color:#a0a0a0;font-size:11px;">KDA: ${p.kills}/${p.deaths}/${p.assists}</div>
                                         <div style="color:#a0a0a0;font-size:11px;">${p.totalMinionsKilled + p.neutralMinionsKilled}</div>                                        
-                                        
                                     </div>
                                 `).join('')}
                             </div>

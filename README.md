@@ -78,10 +78,10 @@ nodemon .
 ## 🗺️ Roadmap
 
 - [X] Summoner profile page with profile icon and level
-- [ ] Summoner rank display
+- [X] Summoner rank display
 - [ ] Most played champions
 - [ ] Champion masteries
-- [ ] Match history with champion played and KDA
+- [X] Match history with champion played and KDA
 
 ## ⚠️ Important
 
