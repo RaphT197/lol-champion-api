@@ -227,6 +227,7 @@
             margin-top: 40px;
         }
 
+
         #loading {
             color: #a0a0a0;
             margin-top: 40px;
@@ -254,6 +255,10 @@
         <div id="winRate">
             <div id="winRateText">Win Rate</div>
         </div>
+    </div>
+
+    <div id="ChampionMastery">
+        <div id="ChampionMasteryTexy">Champion Mastery</div>
     </div>
 
     <div id="matchSection" style="display:none;">
@@ -313,19 +318,20 @@
         async function getSummonerInfo() {
             try {
 
-
-
                 const response = await fetch(`/summoner/${summonerName}/${tagLine}`);
                 const data = await response.json();
-                const rankInfo = data.rankInfo[0]
-                console.log(rankInfo.tier)
-                console.log(data.rankInfo)
+                console.log(data)
+                const summonerInfo = data[0]
+                const summonerGameName = data[2]
+                const rankInfo = data[3]
+                const champMasteryData = data[4]
+
 
                 if (!response.ok) {
                     throw new Error(data.error || 'Failed to fetch summoner.');
                 }
 
-                if (!data.summonerData) {
+                if (!data[0]) {
                     throw new Error('Failed to fetch summoner data.');
                 }
 
@@ -333,20 +339,25 @@
                 const championsResponse = await fetch('/champions');
                 const championsData = await championsResponse.json();
                 const championIconMap = {};
+                const champMasteryParsed = {};
+
                 championsData.forEach(champ => {
                     championIconMap[champ.id] = champ.sprite;
                 });
 
-                
-                const puuid = data.summonerData.puuid;
+                championsData.forEach(c => {
+                    champMasteryParsed[c.key] = [c.name, c.id];
+                })
 
+                //console.log(championsData)
+
+          
+                const puuid = data[0].puuid;
                 const summonerResponse = await fetch(`/lol/summoner/v4/summoners/by-puuid/${puuid}`);
                 const summonerData = await summonerResponse.json();
                 const summonerIcon = summonerData.profileIconId;
-                const rankIcon = RANK_IMAGES[rankInfo.tier]
-                console.log(rankInfo.queueType)
-                const rankFixed = RANKED_TYPE[rankInfo.queueType]
-                console.log(rankIcon)
+                const rankIcon = RANK_IMAGES[rankInfo[0].tier]
+                const rankFixed = RANKED_TYPE[rankInfo[0].queueType]
                 const summonerIconImg = `https://ddragon.leagueoflegends.com/cdn/16.9.1/img/profileicon/${summonerIcon}.png`;
 
                 if (!summonerResponse.ok) {
@@ -355,11 +366,11 @@
 
                 document.getElementById('loading').style.display = 'none';
 
-                document.getElementById('summonerName').textContent = data.summonerGameName;
+                document.getElementById('summonerName').textContent = summonerGameName;
                 document.getElementById('summonerLevel').textContent = `Level: ${summonerData.summonerLevel}`;
                 document.getElementById('summonerRankImage').innerHTML = `<img src="${rankIcon}" width="120" height="120" alt="Rank Icon" />`;
                 document.getElementById('queueType').textContent = `${rankFixed}`
-                document.getElementById('summonerRank').textContent = `Current Rank: ${RANK_NOT_CAPS[rankInfo.tier]} ${rankInfo.rank}  ` 
+                document.getElementById('summonerRank').textContent = `Current Rank: ${RANK_NOT_CAPS[rankInfo[0].tier]} ${rankInfo[0].rank}  ` 
                 document.getElementById('profileIcon').innerHTML = `<img src="${summonerIconImg}" width ="120" height="120" alt="Profile Icon" />`;
                 document.getElementById('summonerHeader').style.display = 'flex';
 
@@ -368,7 +379,7 @@
 
                 let allMatchInfo = []
 
-                for (const id of data.matchIds) {
+                for (const id of data[1]) {
                     allMatchInfo.push(await matchData(id));
                 }  
 
@@ -387,6 +398,21 @@
 
                 const matchList = document.getElementById('matchList');
 
+                //console.log(champMasteryParsed)
+                //console.log(championIconMap)
+
+                champMasteryData.forEach(entry => {
+                    const masteryCard = document.createElement('div');
+                    masteryChampIcon = championIconMap[champMasteryParsed[entry.championId][1]]
+                    masteryCard.className = 'masteryCard';
+                    masteryCard.innerHTML = `
+                        <img src="${masteryChampIcon}" width=32, height=32 alt="champion icon for all champions">
+                        <span class="masteryCard">${champMasteryParsed[entry.championId][0]} Mastery Points: ${entry.championPoints}</span>
+                    `
+                    document.getElementById('ChampionMastery').appendChild(masteryCard)
+                })
+
+                
                 validMatches.forEach((matchInfo, index) => {
                     const queueName = QUEUE_NAMES[matchInfo.info.queueId] || matchInfo.info.gameMode;
                     const participant = matchInfo.info.participants.find(p => p.puuid === puuid);

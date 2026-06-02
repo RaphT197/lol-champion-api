@@ -133,7 +133,6 @@ h1 {
     </div>
     
     <div id="championGrid">
-        <!-- champion cards will be injected here by JavaScript -->
     </div>
 
     <script>
@@ -148,7 +147,7 @@ h1 {
                     const card = document.createElement('div');
                     card.className = 'champion-card';
                     card.innerHTML = `
-                        <img id="championSprite" src="${champion.sprite}" width="75" height="75" alt="${champion.id} Sprite">
+                        <img id="championSprite" src="${champion.sprite}" width="75" height="75" alt="${champion.name} Sprite">
                         <h3>${champion.name}</h3>
                     `;
 

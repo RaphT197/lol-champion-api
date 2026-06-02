@@ -48,18 +48,23 @@ async function getSummonerData (summonerName, tagLine) {
     const url = `https://americas.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${summonerName}/${tagLine}`
 
     const response = await axios.get(url, {
-        headers: {
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
-            "Accept-Language": "en-US,en;q=0.9",
-            "Accept-Charset": "application/x-www-form-urlencoded; charset=UTF-8",
-            "Origin": "https://developer.riotgames.com",
-            "X-Riot-Token": process.env.API_KEY
-        }
+        headers: HEADER
     })
 
     console.log(response.data)
     return response.data
 }
+
+async function getChampionMastery (puuid) {
+    const championMastURL = `https://na1.api.riotgames.com/lol/champion-mastery/v4/champion-masteries/by-puuid/${puuid}`
+
+    const response = await axios.get(championMastURL, {
+        headers: HEADER
+    })
+
+    return response.data
+}
+
 async function getChampions() {
     
     const cacheExpired = lastFetchTime &&
@@ -101,13 +106,15 @@ app.get(`/summoner/:name/:tagLine`, async (req, res) => {
         const tagLine = req.params.tagLine
 
 
+
         const summonerData = await getSummonerData(summonerName, tagLine)
         //console.log(summonerData)
         const matchIds = await getMatchIds(summonerData.puuid)
         const puuid = summonerData.puuid
+        let champMasteryData = await getChampionMastery(puuid)
+        champMasteryData = champMasteryData.slice(0,3)
         const summonerGameName = summonerData.gameName + '#' + summonerData.tagLine
         const rankData = await getRankData(puuid)
-        console.log(rankData)
         const rankInfo = rankData.map(info => 
             ({
                 queueType: info.queueType,
@@ -120,13 +127,17 @@ app.get(`/summoner/:name/:tagLine`, async (req, res) => {
 
         //console.log(summonerGameName)
 
+        const combinedData = [...[summonerData],...[matchIds], ...[summonerGameName], ...[rankInfo], ...[champMasteryData]]
 
-        res.json({
-            summonerData,
-            matchIds,
-            summonerGameName,
-            rankInfo
-        })
+
+        res.json(combinedData)
+
+        // res.json({
+        //     summonerData,
+        //     matchIds,
+        //     summonerGameName,
+        //     rankInfo
+        // })
 
     } catch (error) {
         console.error(error.message);
@@ -145,6 +156,7 @@ app.get('/champion/:name', async (req, res) => {
         const championName = req.params.name
         const loreCache = cachedLore[championName]
 
+
         const loreCacheExpired = loreCache &&
             (Date.now() - loreCache.timeStamp > CACHE_DURATION)
 
@@ -159,13 +171,14 @@ app.get('/champion/:name', async (req, res) => {
         }
 
         const champions = await getChampions(); // calls function
+        //console.log(champions)
         const champion = champions[championName] // finds specific champion
 
         if(!champion) {
         return res.status(404).json({error: `Champion not found`})
         }  
 
-
+        
         const {name, title, id} = champion
         const {lore} = cachedLore[championName].data
         const {hp, mp, movespeed, armor, spellblock, attackrange, attackdamage, attackspeed} = champion.stats
@@ -200,6 +213,7 @@ app.get('/champion/:name', async (req, res) => {
     }
 });
 
+
 app.get('/champions', async (req, res) => {
     try {
 
@@ -208,6 +222,7 @@ app.get('/champions', async (req, res) => {
         const championList = Object.entries(champions)
             .map(champ => {
                 const id = champ[0]
+                let key = champ[1].key
                 const data = champ[1]
                 const name = data.name
                 const sprite = `https://ddragon.leagueoflegends.com/cdn/${process.env.VERSION}/img/champion/${id}.png`
@@ -215,11 +230,15 @@ app.get('/champions', async (req, res) => {
             
             return {
                 id,
+                key,
                 name,
                 sprite
             }
     })
 
+        championList.sort((a, b) => a.name.localeCompare(b.name));
+        //console.log(championList)
+        //res.json(champName2Key)
         res.json(championList)
 
     }   catch (error) {
