@@ -51,8 +51,31 @@ async function getSummonerData (summonerName, tagLine) {
         headers: HEADER
     })
 
-    console.log(response.data)
+    //console.log(response.data)
     return response.data
+}
+
+async function getMatchDetails(matchId) {
+    const matchCache = matchCached[matchId]
+    
+    const matchCacheExpired = matchCache &&
+        (Date.now() - matchCache.timeStamp > CACHE_DURATION)
+
+    if (!matchCache || matchCacheExpired) {
+        const url = `https://americas.api.riotgames.com/lol/match/v5/matches/${matchId}`
+        const response = await axios.get(url, { headers: HEADER })
+        matchCached[matchId] = {
+            data: response.data,
+            timeStamp: Date.now()
+        }
+        console.log(`Fetched fresh match: ${matchId}`)
+    } else {
+        console.log(`Using cached match: ${matchId}`)
+    }
+
+    const data =  matchCached[matchId].data
+    console.log(data)
+    return data
 }
 
 async function getChampionMastery (puuid) {
@@ -63,6 +86,43 @@ async function getChampionMastery (puuid) {
     })
 
     return response.data
+}
+
+async function getChampionWinRate(puuid, matchIds) {
+    const championStats = {}
+
+    for (const matchId of matchIds) {
+        const match = await getMatchDetails(matchId)
+
+        const player = match.info.participants
+            .find(p => p.puuid === puuid)
+
+        if(!player) continue
+
+        const won = player.win
+
+        const champion = player.championName
+
+        if (!championStats[champion]) {
+            championStats[champion] = { wins: 0, losses: 0, games: 0 }
+        }
+
+        championStats[champion].games++
+        if (won) championStats[champion].wins++
+        if (!won) championStats[champion].losses++
+
+    }
+
+    return Object.entries(championStats)
+        .map(([champion, stats]) => ({
+            champion,
+            games: stats.games,
+            wins: stats.wins,
+            losses: stats.losses,
+            winRate: ((stats.wins / stats.games) * 100).toFixed(1)
+        }))
+        .sort((a, b) => b.winRate - a.winRate)
+
 }
 
 async function getChampions() {
@@ -76,7 +136,7 @@ async function getChampions() {
         lastFetchTime = Date.now()
         return cachedChampions
     } else {
-        console.log("Using cached data")
+        //console.log("Using cached data")
         return cachedChampions;
     }
 
@@ -104,15 +164,14 @@ app.get(`/summoner/:name/:tagLine`, async (req, res) => {
     try {
         const summonerName = req.params.name
         const tagLine = req.params.tagLine
-
-
-
         const summonerData = await getSummonerData(summonerName, tagLine)
         //console.log(summonerData)
         const matchIds = await getMatchIds(summonerData.puuid)
         const puuid = summonerData.puuid
+        const allMatchInfo = await Promise.all(matchIds.map(matches => getMatchDetails(matches)))
         let champMasteryData = await getChampionMastery(puuid)
         champMasteryData = champMasteryData.slice(0,3)
+        const championWinRate = await getChampionWinRate(puuid, matchIds)
         const summonerGameName = summonerData.gameName + '#' + summonerData.tagLine
         const rankData = await getRankData(puuid)
         const rankInfo = rankData.map(info => 
@@ -124,10 +183,11 @@ app.get(`/summoner/:name/:tagLine`, async (req, res) => {
                 wins: info.wins,
                 losses: info.losses
             }))
+        
 
         //console.log(summonerGameName)
 
-        const combinedData = [...[summonerData],...[matchIds], ...[summonerGameName], ...[rankInfo], ...[champMasteryData]]
+        const combinedData = [...[summonerData],...[matchIds], ...[summonerGameName], ...[rankInfo], ...[champMasteryData], championWinRate, ...[allMatchInfo]]
 
 
         res.json(combinedData)
@@ -322,50 +382,6 @@ app.get('/lol/summoner/v4/summoners/by-puuid/:puuid', async (req, res) => {
         }
     }
 });
-
-app.get('/lol/match/v5/matches/:matchId', async (req, res) => {
-    try {
-        const matchId = req.params.matchId;
-        const matchCache = matchCached[matchId]
-
-        const matchCacheExpired = matchCache &&
-            (Date.now() - matchCache.timeStamp > process.env.MATCH_CACHE_DURATION)
-
-        if (!matchCache || matchCacheExpired) {
-
-            const url = `https://americas.api.riotgames.com/lol/match/v5/matches/${matchId}`;
-            const response = await axios.get(url, {
-                headers: {
-                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
-                    "Accept-Language": "en-US,en;q=0.9",
-                    "Accept-Charset": "application/x-www-form-urlencoded; charset=UTF-8",
-                    "Origin": "https://developer.riotgames.com",
-                    "X-Riot-Token": API_KEY
-                }
-            });
-            matchCached[matchId] = {
-                data: response.data,
-                timeStamp: Date.now()
-            }
-        } else {
-            console.log("Using cached match data for ID:", matchId);
-        }
-
-        const match = matchCached[matchId].data;
-        const { gameId, gameMode, gameType, gameDuration } = match.info;
-
-        res.json(matchCached[matchId].data);
-
-    } catch (error) {
-        console.error(error.message);
-
-        if(error.response && error.response.status === 404){
-            res.status(404).json({error: `Match not found`})
-        } else {
-            res.status(500).json({error: `Something went wrong.`})
-        }
-    }
-})
 
 
 module.exports = app;

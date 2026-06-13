@@ -89,6 +89,8 @@
             flex-shrink: 0;
         }
 
+
+
         #winRate::before {
             content: '';
             position: absolute;
@@ -258,11 +260,11 @@
     </div>
 
     <div id="ChampionMastery">
-        <div id="ChampionMasteryTexy">Champion Mastery</div>
+        
     </div>
 
     <div id="matchSection" style="display:none;">
-        <h2>Recent Matches</h2>
+        <h2><br>Recent Matches</h2>
         <div id="matchList"></div>
     </div>
 
@@ -320,7 +322,6 @@
 
                 const response = await fetch(`/summoner/${summonerName}/${tagLine}`);
                 const data = await response.json();
-                console.log(data)
                 const summonerInfo = data[0]
                 const summonerGameName = data[2]
                 const rankInfo = data[3]
@@ -375,13 +376,7 @@
                 document.getElementById('summonerHeader').style.display = 'flex';
 
 
-                //const allMatchInfo = await Promise.all(data.matchIds.map(id => matchData(id)));
-
-                let allMatchInfo = []
-
-                for (const id of data[1]) {
-                    allMatchInfo.push(await matchData(id));
-                }  
+                const allMatchInfo = data[6]
 
                 // Some fetches may fail (rate limit) — filter to only ones with valid data
                 const validMatches = allMatchInfo.filter(m => m.info && m.info.participants);
@@ -403,11 +398,12 @@
 
                 champMasteryData.forEach(entry => {
                     const masteryCard = document.createElement('div');
-                    masteryChampIcon = championIconMap[champMasteryParsed[entry.championId][1]]
                     masteryCard.className = 'masteryCard';
+                    console.log(champMasteryParsed[entry.championId][1])
+                    masteryChampIcon = championIconMap[champMasteryParsed[entry.championId][1]]
                     masteryCard.innerHTML = `
-                        <img src="${masteryChampIcon}" width=32, height=32 alt="champion icon for all champions">
-                        <span class="masteryCard">${champMasteryParsed[entry.championId][0]} Mastery Points: ${entry.championPoints}</span>
+                        <a href="champion.html?name=${champMasteryParsed[entry.championId][1]}"> <img src="${masteryChampIcon}" width=100, height=100 alt="champion icon for all champions"> </a>
+                        <span class="masteryChampName">${champMasteryParsed[entry.championId][0]}</span><span class="masteryLabel"> <br>Mastery Points: ${entry.championPoints}</span>
                     `
                     document.getElementById('ChampionMastery').appendChild(masteryCard)
                 })
@@ -543,7 +539,7 @@
 
 
         async function matchData(id) {
-            const response = await fetch(`/lol/match/v5/matches/${id}`);
+            const response = await getMatchDetails(id)
             return await response.json();
         }
 

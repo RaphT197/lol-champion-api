@@ -17,6 +17,31 @@ h1 {
     color: #c8aa6e;
 }
 
+#ChampionMastery {
+    display: grid;
+    grid-template-columns: 0.5fr 0.5fr 0.5fr;
+}
+
+.masteryLabel {
+    width: 100%;
+    align-items:center;
+    display: flex;
+    flex-direction: column;
+}
+
+.masteryChampName {
+    display: inline-block; /* Allows the span to hold width and alignment */
+    width: 200px;          /* Give it enough room to show the centering effect */
+    text-align: center; 
+}
+
+.masteryCard{
+    width: 100%;
+    align-items:center;
+    display: flex;
+    flex-direction: column;
+}
+
 #searchBar {
     display: block;
     margin: 0 auto 20px;
